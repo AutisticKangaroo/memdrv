@@ -56,13 +56,13 @@ static uint64_t beep_device_control_ = 0;
 fn_beep_device_control beep_device_control_trampoline;
 
 bool map_physical(uint32_t pid, uint64_t address, size_t size, uint64_t* view) {
-    UNICODE_STRING PhysicalMemoryUnicodeString;
-    RtlInitUnicodeString(&PhysicalMemoryUnicodeString, L"\\Device\\PhysicalMemory");
+    UNICODE_STRING physical_memory_unicode_string;
+    RtlInitUnicodeString(&physical_memory_unicode_string, L"\\Device\\PhysicalMemory");
 
-    OBJECT_ATTRIBUTES ObjectAttributes;
+    OBJECT_ATTRIBUTES object_attributes;
     InitializeObjectAttributes(
-        &ObjectAttributes,
-        &PhysicalMemoryUnicodeString,
+        &object_attributes,
+        &physical_memory_unicode_string,
         OBJ_CASE_INSENSITIVE,
         (HANDLE) nullptr,
         (PSECURITY_DESCRIPTOR) nullptr);
@@ -79,7 +79,7 @@ bool map_physical(uint32_t pid, uint64_t address, size_t size, uint64_t* view) {
 
         KeStackAttachProcess(target, &apc_state);
 
-        if (!NT_SUCCESS(ZwOpenSection(&physical_memory_handle, SECTION_ALL_ACCESS, &ObjectAttributes)))
+        if (!NT_SUCCESS(ZwOpenSection(&physical_memory_handle, SECTION_ALL_ACCESS, &object_attributes)))
             break;
 
         if (!NT_SUCCESS(ObReferenceObjectByHandle(
@@ -207,7 +207,7 @@ bool copy_virtual_memory(uint32_t source_pid, uint32_t target_pid, uint64_t sour
     return false;
 }
 
-NTSTATUS __fastcall BeepDeviceControl_Hook(PDEVICE_OBJECT device_object, PIRP irp) {
+NTSTATUS __fastcall beep_device_control_hook(PDEVICE_OBJECT device_object, PIRP irp) {
     NTSTATUS status = STATUS_SUCCESS;
 
     const auto* stack = IoGetCurrentIrpStackLocation(irp);
@@ -317,7 +317,7 @@ NTSTATUS on_attach(uint64_t base_address) {
     if (address == 0)
         return STATUS_ACCESS_VIOLATION;
 
-    return NT_SUCCESS(detour::apply((void*) address, (void*) BeepDeviceControl_Hook, 25, (void**) &beep_device_control_trampoline))
+    return NT_SUCCESS(detour::apply((void*) address, (void*) beep_device_control_hook, 25, (void**) &beep_device_control_trampoline))
            ? STATUS_SUCCESS
            : STATUS_ACCESS_VIOLATION;
 }
