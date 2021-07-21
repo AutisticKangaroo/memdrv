@@ -71,9 +71,13 @@ bool map_physical(uint32_t pid, uint64_t address, size_t size, uint64_t* view) {
     HANDLE physical_memory_handle = nullptr;
     void* object_handle = nullptr;
 
+    KAPC_STATE apc_state;
+
     do {
         if (!NT_SUCCESS(PsLookupProcessByProcessId((HANDLE) (uint64_t) pid, &target)))
             return false;
+
+        KeStackAttachProcess(target, &apc_state);
 
         if (!NT_SUCCESS(ZwOpenSection(&physical_memory_handle, SECTION_ALL_ACCESS, &ObjectAttributes)))
             break;
@@ -108,9 +112,6 @@ bool map_physical(uint32_t pid, uint64_t address, size_t size, uint64_t* view) {
         void* view_address = nullptr;
 
         {
-            KAPC_STATE apc_state;
-            KeStackAttachProcess(target, &apc_state);
-
             if (ZwMapViewOfSection(
                 physical_memory_handle,
                 CURRENT_PROCESS_HANDLE,
@@ -133,19 +134,17 @@ bool map_physical(uint32_t pid, uint64_t address, size_t size, uint64_t* view) {
                     ViewShare,
                     0,
                     PAGE_READWRITE))) {
-                    KeUnstackDetachProcess(&apc_state);
-
                     break;
                 }
             }
-
-            KeUnstackDetachProcess(&apc_state);
         }
 
         *view = (uint64_t) view_address + start_address.QuadPart - view_base.QuadPart;
 
         ObDereferenceObject(object_handle);
         ZwClose(physical_memory_handle);
+
+        KeUnstackDetachProcess(&apc_state);
 
         return true;
     } while (false);
@@ -156,6 +155,10 @@ bool map_physical(uint32_t pid, uint64_t address, size_t size, uint64_t* view) {
 
     if (physical_memory_handle != nullptr) {
         ZwClose(physical_memory_handle);
+    }
+
+    if (apc_state.Process != nullptr) {
+        KeUnstackDetachProcess(&apc_state);
     }
 
     return false;
