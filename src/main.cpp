@@ -72,14 +72,8 @@ bool map_physical(uint32_t pid, uint64_t address, size_t size, uint64_t* view) {
     void* object_handle = nullptr;
 
     do {
-        if (!NT_SUCCESS(PsLookupProcessByProcessId((HANDLE) (uint64_t) pid, &target))) {
-            *view = 1;
-
+        if (!NT_SUCCESS(PsLookupProcessByProcessId((HANDLE) (uint64_t) pid, &target)))
             return false;
-        }
-
-        KAPC_STATE state;
-        KeStackAttachProcess(target, &state);
 
         if (!NT_SUCCESS(ZwOpenSection(&physical_memory_handle, SECTION_ALL_ACCESS, &ObjectAttributes)))
             break;
@@ -114,6 +108,9 @@ bool map_physical(uint32_t pid, uint64_t address, size_t size, uint64_t* view) {
         void* view_address = nullptr;
 
         {
+            KAPC_STATE apc_state;
+            KeStackAttachProcess(target, &apc_state);
+
             if (ZwMapViewOfSection(
                 physical_memory_handle,
                 CURRENT_PROCESS_HANDLE,
@@ -136,9 +133,13 @@ bool map_physical(uint32_t pid, uint64_t address, size_t size, uint64_t* view) {
                     ViewShare,
                     0,
                     PAGE_READWRITE))) {
+                    KeUnstackDetachProcess(&apc_state);
+
                     break;
                 }
             }
+
+            KeUnstackDetachProcess(&apc_state);
         }
 
         *view = (uint64_t) view_address + start_address.QuadPart - view_base.QuadPart;
