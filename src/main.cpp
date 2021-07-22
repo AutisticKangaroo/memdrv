@@ -336,6 +336,8 @@ NTSTATUS on_attach(uint64_t base_address) {
     if (address == 0)
         return STATUS_ACCESS_VIOLATION;
 
+    beep_device_control_ = address;
+
     return NT_SUCCESS(detour::apply((void*) address, (void*) beep_device_control_hook, 25, (void**) &beep_device_control_trampoline))
            ? STATUS_SUCCESS
            : STATUS_ACCESS_VIOLATION;
