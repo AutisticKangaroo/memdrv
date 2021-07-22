@@ -146,6 +146,8 @@ bool map_physical(uint32_t pid, uint64_t address, size_t size, uint64_t* view) {
 
         KeUnstackDetachProcess(&apc_state);
 
+        ObDereferenceObject(target);
+
         return true;
     } while (false);
 
@@ -161,11 +163,28 @@ bool map_physical(uint32_t pid, uint64_t address, size_t size, uint64_t* view) {
         KeUnstackDetachProcess(&apc_state);
     }
 
+    if (target != nullptr) {
+        ObDereferenceObject(target);
+    }
+
     return false;
 }
 
 bool unmap_physical(uint32_t pid, uint64_t view) {
-    return NT_SUCCESS(ZwUnmapViewOfSection(CURRENT_PROCESS_HANDLE, (void*) view));
+    PEPROCESS target;
+    if (!NT_SUCCESS(PsLookupProcessByProcessId((HANDLE) (uint64_t) pid, &target)))
+        return false;
+
+    KAPC_STATE apc_state;
+    KeStackAttachProcess(target, &apc_state);
+
+    const bool result = NT_SUCCESS(ZwUnmapViewOfSection(CURRENT_PROCESS_HANDLE, (void*) view));
+
+    KeUnstackDetachProcess(&apc_state);
+
+    ObDereferenceObject(target);
+
+    return result;
 }
 
 bool copy_virtual_memory(uint32_t source_pid, uint32_t target_pid, uint64_t source_address, uint64_t target_address, size_t size) {
