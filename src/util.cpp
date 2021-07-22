@@ -2,11 +2,8 @@
 
 #include "kdef.hpp"
 
-#include <ntimage.h>
-
 // phnt
-#include <ntldr.h>
-#include <ntexapi.h>
+#include <ntimage.h>
 
 namespace util {
     void* get_system_information(SYSTEM_INFORMATION_CLASS information_class) {
