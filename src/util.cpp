@@ -29,12 +29,12 @@ namespace util {
     }
 
     uint64_t get_kernel_module(const char* name) {
-        const auto to_lower = [](char* str) -> const char*{
-            for (char* p = str; *p; ++p) {
-                *p = static_cast<char>(tolower(*p));
+        const auto to_lower = [](char* string) -> const char* {
+            for (char* pointer = string; *pointer != '\0'; ++pointer) {
+                *pointer = (char) (short) tolower(*pointer);
             }
 
-            return str;
+            return string;
         };
 
         const auto info = (PRTL_PROCESS_MODULES) get_system_information(SystemModuleInformation);
@@ -70,7 +70,7 @@ namespace util {
             return true;
         };
 
-        range = range - static_cast<size_t>(strlen(mask));
+        range = range - strlen(mask);
 
         for (size_t i = 0; i < range; ++i) {
             if (check_mask((const char*) base + i, pattern, mask)) {
@@ -82,7 +82,7 @@ namespace util {
     }
 
     uint64_t find_pattern_module(uint64_t base, const char* pattern, const char* mask) {
-        const auto headers = reinterpret_cast<PIMAGE_NT_HEADERS>(base + reinterpret_cast<PIMAGE_DOS_HEADER>(base)->e_lfanew);
+        const auto headers = (PIMAGE_NT_HEADERS) (base + ((PIMAGE_DOS_HEADER) base)->e_lfanew);
         const auto sections = IMAGE_FIRST_SECTION(headers);
 
         for (size_t i = 0; i < headers->FileHeader.NumberOfSections; i++) {

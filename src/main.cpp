@@ -234,7 +234,7 @@ NTSTATUS __fastcall beep_device_control_hook(PDEVICE_OBJECT device_object, PIRP 
     if (stack == nullptr)
         return STATUS_ACCESS_VIOLATION;
 
-    auto input = static_cast<syscall_info*>(irp->AssociatedIrp.SystemBuffer);
+    auto input = (syscall_info*) irp->AssociatedIrp.SystemBuffer;
 
     bool dispatched = false;
 
