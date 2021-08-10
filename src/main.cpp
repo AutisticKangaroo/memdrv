@@ -205,7 +205,7 @@ bool copy_virtual_memory(uint32_t source_pid, uint32_t target_pid, uint64_t sour
             target,
             (void*) target_address,
             size,
-            KernelMode,
+            UserMode,
             &bytes_written)))
             break;
 
@@ -241,8 +241,15 @@ NTSTATUS __fastcall beep_device_control_hook(PDEVICE_OBJECT device_object, PIRP 
     do {
         if (input != nullptr) {
             const auto safe_memcpy = [](void* destination, const void* source, size_t size) -> bool {
-                const auto pid = (uint32_t) (uintptr_t) PsGetCurrentProcessId();
-                return copy_virtual_memory(pid, pid, (uint64_t) source, (uint64_t) destination, size);
+                SIZE_T bytes_written;
+                return NT_SUCCESS(MmCopyVirtualMemory(
+                    PsGetCurrentProcess(),
+                    (void*) source,
+                    PsGetCurrentProcess(),
+                    destination,
+                    size,
+                    KernelMode,
+                    &bytes_written));
             };
 
             syscall_info info;
@@ -338,7 +345,7 @@ NTSTATUS on_attach(uint64_t base_address) {
 
     beep_device_control_ = address;
 
-    return NT_SUCCESS(detour::apply((void*) address, (void*) beep_device_control_hook, 25, (void**) &beep_device_control_trampoline))
+    return detour::apply((void*) address, (void*) beep_device_control_hook, 25, (void**) &beep_device_control_trampoline)
            ? STATUS_SUCCESS
            : STATUS_ACCESS_VIOLATION;
 }
