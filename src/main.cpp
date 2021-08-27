@@ -12,8 +12,11 @@
 #define DRIVER_ENTRY_ATTACH 0
 #define DRIVER_ENTRY_DETACH 1
 
+NTSTATUS DriverEntry(uint64_t base_address, uint64_t reason);
+
 enum class dispatch_id : uint32_t {
-    map_physical = 0,
+    info = 0,
+    map_physical,
     unmap_physical,
     copy_virtual_memory
 };
@@ -25,6 +28,11 @@ struct syscall_info {
     uint32_t syscall;
     void* arguments;
     bool* success;
+};
+
+struct info_packet_t {
+    uint64_t base;
+    uint64_t entry;
 };
 
 struct map_physical_packet_t {
@@ -259,6 +267,17 @@ NTSTATUS __fastcall beep_device_control_hook(PDEVICE_OBJECT device_object, PIRP 
 
             const auto dispatch = [&safe_memcpy](dispatch_id id, void* args, bool* success) -> bool {
                 switch (id) {
+                    case dispatch_id::info: {
+                        info_packet_t packet;
+
+                        packet.base = base_address_;
+                        packet.entry = (uint64_t) DriverEntry;
+
+                        *success = true;
+
+                        return safe_memcpy(args, &packet, sizeof(packet));
+                    }
+
                     case dispatch_id::map_physical: {
                         map_physical_packet_t packet;
                         if (!safe_memcpy(&packet, args, sizeof(packet)))
