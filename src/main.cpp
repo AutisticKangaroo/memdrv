@@ -119,8 +119,18 @@ bool map_physical(uint32_t pid, uint64_t address, size_t size, uint64_t* view) {
 
         void* view_address = nullptr;
 
-        {
-            if (ZwMapViewOfSection(
+        if (ZwMapViewOfSection(
+            physical_memory_handle,
+            CURRENT_PROCESS_HANDLE,
+            &view_address,
+            0,
+            physical_size,
+            &view_base,
+            &physical_size,
+            ViewShare,
+            0,
+            PAGE_READWRITE | PAGE_NOCACHE) == STATUS_CONFLICTING_ADDRESSES) {
+            if (!NT_SUCCESS(ZwMapViewOfSection(
                 physical_memory_handle,
                 CURRENT_PROCESS_HANDLE,
                 &view_address,
@@ -130,20 +140,8 @@ bool map_physical(uint32_t pid, uint64_t address, size_t size, uint64_t* view) {
                 &physical_size,
                 ViewShare,
                 0,
-                PAGE_READWRITE | PAGE_NOCACHE) == STATUS_CONFLICTING_ADDRESSES) {
-                if (!NT_SUCCESS(ZwMapViewOfSection(
-                    physical_memory_handle,
-                    CURRENT_PROCESS_HANDLE,
-                    &view_address,
-                    0,
-                    physical_size,
-                    &view_base,
-                    &physical_size,
-                    ViewShare,
-                    0,
-                    PAGE_READWRITE))) {
-                    break;
-                }
+                PAGE_READWRITE))) {
+                break;
             }
         }
 
