@@ -263,7 +263,7 @@ NTSTATUS __fastcall beep_device_control_hook(PDEVICE_OBJECT device_object, PIRP 
                 return ((fn_beep_device_control) beep_device_control_trampoline)(device_object, irp);
             }
 
-            const auto dispatch = [&safe_memcpy](dispatch_id id, void* args, bool* success) -> bool {
+            const auto dispatch = [safe_memcpy](dispatch_id id, void* args, bool* success) -> bool {
                 switch (id) {
                     case dispatch_id::info: {
                         info_packet_t packet;
